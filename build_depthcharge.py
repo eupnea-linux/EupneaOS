@@ -24,11 +24,11 @@ def prepare_image() -> str:
     print_status("Preparing image")
 
     try:
-        bash(f"fallocate -l 10G eupneaos-depthcharge.bin")
+        bash(f"fallocate -l 10G giesmios-depthcharge.bin")
     except subprocess.CalledProcessError:  # try fallocate, if it fails use dd
-        bash(f"dd if=/dev/zero of=eupneaos-depthcharge.bin status=progress bs=1024 count={10 * 1000000}")
+        bash(f"dd if=/dev/zero of=giesmios-depthcharge.bin status=progress bs=1024 count={10 * 1000000}")
     print_status("Mounting empty image")
-    img_mnt = bash("losetup -f --show eupneaos-depthcharge.bin")
+    img_mnt = bash("losetup -f --show giesmios-depthcharge.bin")
     if img_mnt == "":
         print_error("Failed to mount image")
         exit(1)
@@ -50,7 +50,7 @@ def prepare_image() -> str:
     # Create rootfs ext4 partition
     bash(f"yes 2>/dev/null | mkfs.ext4 {rootfs_mnt}")  # 2>/dev/null is to supress yes broken pipe warning
     # Mount rootfs partition
-    bash(f"mount {rootfs_mnt} /mnt/eupneaos")
+    bash(f"mount {rootfs_mnt} /mnt/giesmios")
 
     # get uuid of rootfs partition
     rootfs_partuuid = bash(f"blkid -o value -s PARTUUID {rootfs_mnt}")
@@ -70,19 +70,19 @@ def flash_kernel(kernel_part: str) -> None:
     # Sign kernel
     bash("futility vbutil_kernel --arch x86_64 --version 1 --keyblock /usr/share/vboot/devkeys/kernel.keyblock"
          + " --signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk --bootloader kernel.flags" +
-         " --config kernel.flags --vmlinuz /tmp/eupneaos-build/bzImage --pack /tmp/eupneaos-build/bzImage.signed")
-    bash(f"dd if=/tmp/eupneaos-build/bzImage.signed of={kernel_part}")  # part 1 is the kernel partition
+         " --config kernel.flags --vmlinuz /tmp/giesmios-build/bzImage --pack /tmp/eupneaos-build/bzImage.signed")
+    bash(f"dd if=/tmp/giesmios-build/bzImage.signed of={kernel_part}")  # part 1 is the kernel partition
 
     print_status("Kernel flashed successfully")
 
 
 # Make a bootable rootfs
 def bootstrap_rootfs() -> None:
-    bash("tar xfp /tmp/eupneaos-build/rootfs.tar.xz -C /mnt/eupneaos --checkpoint=.10000")
+    bash("tar xfp /tmp/giesmios-build/rootfs.tar.xz -C /mnt/giesmios --checkpoint=.10000")
     # Create a temporary resolv.conf for internet inside the chroot
-    mkdir("/mnt/eupneaos/run/systemd/resolve", create_parents=True)  # dir doesnt exist coz systemd didnt run
+    mkdir("/mnt/giesmios/run/systemd/resolve", create_parents=True)  # dir doesnt exist coz systemd didnt run
     cpfile("/etc/resolv.conf",
-           "/mnt/eupneaos/run/systemd/resolve/stub-resolv.conf")  # copy hosts resolv.conf to chroot
+           "/mnt/giesmios/run/systemd/resolve/stub-resolv.conf")  # copy hosts resolv.conf to chroot
 
     # TODO: Replace generic repos with own EupneaOS repos
     chroot("dnf install --releasever=37 --allowerasing -y generic-logos generic-release generic-release-common")
